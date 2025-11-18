@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Chit
+from .models import Chit, Member
 
 
 @admin.register(Chit)
@@ -41,3 +41,41 @@ class ChitAdmin(admin.ModelAdmin):
             'fields': ('created_at',)
         }),
     )
+
+
+@admin.register(Member)
+class MemberAdmin(admin.ModelAdmin):
+    """Admin interface for Member model"""
+
+    list_display = [
+        'member_id',
+        'name',
+        'mobile_number',
+        'role',
+        'get_chit_name',
+        'created_at',
+    ]
+
+    list_filter = ['role', 'created_at', 'chit']
+    search_fields = ['member_id', 'name', 'mobile_number', 'chit__chit_name']
+    readonly_fields = ['member_id', 'created_at']
+
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('member_id', 'name', 'mobile_number', 'role')
+        }),
+        ('Chit Association', {
+            'fields': ('chit',)
+        }),
+        ('Media', {
+            'fields': ('profile_image',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at',)
+        }),
+    )
+
+    def get_chit_name(self, obj):
+        """Display chit name in list view"""
+        return obj.chit.chit_name
+    get_chit_name.short_description = 'Chit Name'

@@ -83,3 +83,80 @@ class Chit(models.Model):
 
     def __str__(self):
         return f"{self.chit_name} ({self.chit_id})"
+
+
+class Member(models.Model):
+    """Model representing a member of a chit fund"""
+
+    ROLE_CHOICES = [
+        ('admin', 'Admin'),
+        ('member', 'Member'),
+        ('organizer', 'Organizer'),
+        ('treasurer', 'Treasurer'),
+    ]
+
+    member_id = models.CharField(max_length=255, primary_key=True, unique=True, editable=False)
+    name = models.CharField(max_length=255)
+    mobile_number = models.CharField(max_length=10)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    chit = models.ForeignKey(Chit, on_delete=models.CASCADE, related_name='members')
+    profile_image = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'members'
+        ordering = ['-created_at']
+        # Ensure unique mobile number per chit
+        unique_together = [['chit', 'mobile_number']]
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-generate unique member_id"""
+        if not self.member_id:
+            # Generate unique member_id with sequential numbering
+            self.member_id = self._generate_sequential_member_id()
+
+        super().save(*args, **kwargs)
+
+    def _generate_sequential_member_id(self):
+        """
+        Generate sequential member_id with format: MEM-YYYYMM-NNN
+        Example: MEM-202501-001, MEM-202501-002, etc.
+        """
+        # Get current year and month
+        now = datetime.now()
+        year_month = now.strftime('%Y%m')  # Format: YYYYMM (e.g., 202501)
+
+        # Prefix for all members
+        prefix = f"MEM-{year_month}-"
+
+        # Use atomic transaction to prevent race conditions
+        with transaction.atomic():
+            # Find the latest member ID for this year-month
+            latest_member = Member.objects.filter(
+                member_id__startswith=prefix
+            ).order_by('-member_id').first()
+
+            if latest_member:
+                # Extract the sequence number from the last member_id
+                last_sequence = int(latest_member.member_id.split('-')[-1])
+                new_sequence = last_sequence + 1
+            else:
+                # First member of this month
+                new_sequence = 1
+
+            # Format sequence number with leading zeros (3 digits)
+            sequence_str = str(new_sequence).zfill(3)
+
+            # Generate the new member_id
+            member_id = f"{prefix}{sequence_str}"
+
+            # Double-check uniqueness (should not happen, but safety check)
+            while Member.objects.filter(member_id=member_id).exists():
+                new_sequence += 1
+                sequence_str = str(new_sequence).zfill(3)
+                member_id = f"{prefix}{sequence_str}"
+
+            return member_id
+
+    def __str__(self):
+        return f"{self.name} - {self.chit.chit_name} ({self.member_id})"
