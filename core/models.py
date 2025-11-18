@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
-import uuid
-import re
+from django.db import transaction
+from datetime import datetime
 
 
 class Chit(models.Model):
@@ -31,8 +31,8 @@ class Chit(models.Model):
     def save(self, *args, **kwargs):
         """Override save to auto-generate unique chit_id and hash password"""
         if not self.chit_id:
-            # Generate unique chit_id
-            self.chit_id = self._generate_unique_chit_id()
+            # Generate unique chit_id with sequential numbering
+            self.chit_id = self._generate_sequential_chit_id()
 
         # Hash password if it's not already hashed
         if self.password and not self.password.startswith('pbkdf2_'):
@@ -40,29 +40,46 @@ class Chit(models.Model):
 
         super().save(*args, **kwargs)
 
-    def _generate_unique_chit_id(self):
-        """Generate unique chit_id with format: chitname + year + type_initial + uuid"""
-        # Sanitize chit name (remove special characters, convert to lowercase)
-        sanitized_name = re.sub(r'[^a-zA-Z0-9]', '', self.chit_name.lower())
+    def _generate_sequential_chit_id(self):
+        """
+        Generate sequential chit_id with format: CHT-YYYYMM-NNN
+        Example: CHT-202501-001, CHT-202501-002, etc.
+        """
+        # Get current year and month
+        now = datetime.now()
+        year_month = now.strftime('%Y%m')  # Format: YYYYMM (e.g., 202501)
 
-        # Get year from starting_date
-        year = self.starting_date.year
+        # Prefix for all chits
+        prefix = f"CHT-{year_month}-"
 
-        # Get type initial (d/w/m)
-        type_initial = self.chit_type[0].lower()
+        # Use atomic transaction to prevent race conditions
+        with transaction.atomic():
+            # Find the latest chit ID for this year-month
+            latest_chit = Chit.objects.filter(
+                chit_id__startswith=prefix
+            ).order_by('-chit_id').first()
 
-        # Generate short UUID (first 8 characters)
-        short_uuid = str(uuid.uuid4())[:8]
+            if latest_chit:
+                # Extract the sequence number from the last chit_id
+                last_sequence = int(latest_chit.chit_id.split('-')[-1])
+                new_sequence = last_sequence + 1
+            else:
+                # First chit of this month
+                new_sequence = 1
 
-        # Combine all parts
-        chit_id = f"{sanitized_name}{year}{type_initial}-{short_uuid}"
+            # Format sequence number with leading zeros (3 digits)
+            sequence_str = str(new_sequence).zfill(3)
 
-        # Ensure uniqueness (in case of collision)
-        while Chit.objects.filter(chit_id=chit_id).exists():
-            short_uuid = str(uuid.uuid4())[:8]
-            chit_id = f"{sanitized_name}{year}{type_initial}-{short_uuid}"
+            # Generate the new chit_id
+            chit_id = f"{prefix}{sequence_str}"
 
-        return chit_id
+            # Double-check uniqueness (should not happen, but safety check)
+            while Chit.objects.filter(chit_id=chit_id).exists():
+                new_sequence += 1
+                sequence_str = str(new_sequence).zfill(3)
+                chit_id = f"{prefix}{sequence_str}"
+
+            return chit_id
 
     def __str__(self):
         return f"{self.chit_name} ({self.chit_id})"
