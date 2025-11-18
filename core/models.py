@@ -100,6 +100,7 @@ class Member(models.Model):
     mobile_number = models.CharField(max_length=10)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     chit = models.ForeignKey(Chit, on_delete=models.CASCADE, related_name='members')
+    password = models.CharField(max_length=255, default='changeme')
     profile_image = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -110,10 +111,14 @@ class Member(models.Model):
         unique_together = [['chit', 'mobile_number']]
 
     def save(self, *args, **kwargs):
-        """Override save to auto-generate unique member_id"""
+        """Override save to auto-generate unique member_id and hash password"""
         if not self.member_id:
             # Generate unique member_id with sequential numbering
             self.member_id = self._generate_sequential_member_id()
+
+        # Hash password if it's not already hashed
+        if self.password and not self.password.startswith('pbkdf2_'):
+            self.password = make_password(self.password)
 
         super().save(*args, **kwargs)
 
