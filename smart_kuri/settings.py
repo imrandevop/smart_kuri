@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-rvtmadnkoybg$3v7+#p%v0m@d0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 # Application definition
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
     "core",
 ]
 
@@ -78,16 +79,29 @@ WSGI_APPLICATION = "smart_kuri.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv('DB_NAME', 'postgres'),
-        "USER": os.getenv('DB_USER', 'postgres'),
-        "PASSWORD": os.getenv('DB_PASSWORD', ''),
-        "HOST": os.getenv('DB_HOST', 'localhost'),
-        "PORT": os.getenv('DB_PORT', '5432'),
+# Use SQLite for local development, PostgreSQL for production
+USE_SQLITE = os.getenv('USE_SQLITE', 'True') == 'True'
+
+if USE_SQLITE:
+    # SQLite database for local development
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    # PostgreSQL database for production (Supabase)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv('DB_NAME', 'postgres'),
+            "USER": os.getenv('DB_USER', 'postgres'),
+            "PASSWORD": os.getenv('DB_PASSWORD', ''),
+            "HOST": os.getenv('DB_HOST', 'localhost'),
+            "PORT": os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 
 # Password validation

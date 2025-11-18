@@ -1,3 +1,27 @@
-from django.shortcuts import render
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import Chit
+from .serializers import ChitSerializer
 
-# Create your views here.
+
+class CreateChitAPIView(APIView):
+    """API view to create a new chit"""
+
+    def post(self, request):
+        """Handle POST request to create a new chit"""
+        serializer = ChitSerializer(data=request.data)
+
+        if serializer.is_valid():
+            chit = serializer.save()
+
+            # Return the created chit data (password excluded by serializer)
+            return Response(
+                ChitSerializer(chit).data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
