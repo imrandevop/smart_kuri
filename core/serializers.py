@@ -121,3 +121,19 @@ class MemberSerializer(serializers.ModelSerializer):
         # Add chit_id to the response (from the related chit object)
         representation['chit_id'] = instance.chit.chit_id
         return representation
+
+
+class JoinChitSerializer(serializers.Serializer):
+    """Serializer for Join Chit (Login) functionality"""
+
+    chit_id = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+    is_admin = serializers.BooleanField(default=False)
+
+    def validate_chit_id(self, value):
+        """Validate that chit exists"""
+        try:
+            chit = Chit.objects.get(chit_id=value)
+        except Chit.DoesNotExist:
+            raise serializers.ValidationError("Chit with this ID does not exist")
+        return value
