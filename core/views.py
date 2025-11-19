@@ -13,6 +13,7 @@ from .serializers import (
     JoinChitSerializer,
     DashboardSerializer,
     LoanSerializer,
+    AddLoanResponseSerializer,
     GetLoansRequestSerializer,
     LoanDetailSerializer,
     GetLedgerEntriesRequestSerializer,
@@ -254,14 +255,21 @@ class AddLoanAPIView(APIView):
         if serializer.is_valid():
             loan = serializer.save()
 
-            # Return the created loan data
+            # Return simple response with only request fields + loan_id
             return Response(
-                LoanSerializer(loan).data,
+                {
+                    "message": "Loan created successfully",
+                    "loan": AddLoanResponseSerializer(loan).data
+                },
                 status=status.HTTP_201_CREATED
             )
 
+        # Return simple error format
         return Response(
-            serializer.errors,
+            {
+                "message": "Failed to create loan",
+                "errors": serializer.errors
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 

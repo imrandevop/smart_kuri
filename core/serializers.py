@@ -258,6 +258,36 @@ class LoanSerializer(serializers.ModelSerializer):
         return representation
 
 
+class AddLoanResponseSerializer(serializers.ModelSerializer):
+    """Simplified serializer for Add Loan response - only returns request fields + loan_id"""
+
+    member_id = serializers.CharField(source='member.member_id', read_only=True)
+    chit_id = serializers.CharField(source='chit.chit_id', read_only=True)
+
+    class Meta:
+        model = Loan
+        fields = [
+            'loan_id',
+            'member_id',
+            'chit_id',
+            'loan_amount',
+            'interest_amount',
+            'starting_date',
+            'ending_date',
+        ]
+        read_only_fields = ['loan_id']
+
+    def to_representation(self, instance):
+        """Customize output to match simple format"""
+        representation = super().to_representation(instance)
+
+        # Convert decimal fields to float
+        representation['loan_amount'] = float(instance.loan_amount)
+        representation['interest_amount'] = float(instance.interest_amount)
+
+        return representation
+
+
 class GetLoansRequestSerializer(serializers.Serializer):
     """Serializer for Get Loans request"""
 
