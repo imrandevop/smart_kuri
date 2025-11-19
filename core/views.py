@@ -54,9 +54,20 @@ class AddMemberAPIView(APIView):
         if serializer.is_valid():
             member = serializer.save()
 
-            # Return the created member data (password excluded by serializer)
+            # Get all members in the same chit (including the newly created one)
+            all_members = Member.objects.filter(chit=member.chit).values('member_id', 'name')
+
+            # Return structured response with created member and all members
             return Response(
-                MemberSerializer(member).data,
+                {
+                    "status": "success",
+                    "code": 201,
+                    "message": "Member added successfully",
+                    "data": {
+                        "created_member": MemberSerializer(member).data,
+                        "all_members": list(all_members)
+                    }
+                },
                 status=status.HTTP_201_CREATED
             )
 
