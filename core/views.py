@@ -55,7 +55,7 @@ class AddMemberAPIView(APIView):
             member = serializer.save()
 
             # Get all members in the same chit (including the newly created one)
-            all_members = Member.objects.filter(chit=member.chit).values('member_id', 'name')
+            all_members = Member.objects.filter(chit=member.chit).values('member_id', 'name', 'profile_image')
 
             # Return structured response with created member and all members
             return Response(
